@@ -789,16 +789,6 @@ export default function App() {
               Event
             </button>
           </div>
-          <div className="header-right">
-            <div className="page-tabs">
-              <button className={`page-tab${page === "calendar" ? " active" : ""}`} onClick={() => setPage("calendar")}>
-                <CalendarIcon size={30} />
-                Calendar
-              </button>
-              <button className={`page-tab${page === "tasks" ? " active" : ""}`} onClick={() => setPage("tasks")}>🗒 Tasks</button>
-              <button className={`page-tab${page === "journal" ? " active" : ""}`} onClick={() => setPage("journal")}>📓 Journal</button>
-            </div>
-          </div>
         </header>
 
         {/* Calendar page */}
@@ -878,6 +868,23 @@ export default function App() {
             </div>
           </div>
         )}
+        <nav className="bottom-nav">
+          <button className={`bottom-nav-item${page === "calendar" ? " act" : ""}`} onClick={() => setPage("calendar")}>
+            <CalendarIcon size={22} />
+            <span className="bnav-lbl">Calendar</span>
+            <span className="bnav-dot" />
+          </button>
+          <button className={`bottom-nav-item${page === "tasks" ? " act" : ""}`} onClick={() => setPage("tasks")}>
+            <span className="bnav-icon">✅</span>
+            <span className="bnav-lbl">Tasks</span>
+            <span className="bnav-dot" />
+          </button>
+          <button className={`bottom-nav-item${page === "journal" ? " act" : ""}`} onClick={() => setPage("journal")}>
+            <span className="bnav-icon">📓</span>
+            <span className="bnav-lbl">Journal</span>
+            <span className="bnav-dot" />
+          </button>
+        </nav>
       </div>
       <FloatingTimer
         timer={activeTimer}

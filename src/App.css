@@ -534,6 +534,39 @@ button { cursor: pointer; }
 .journal-past-preview { font-size: 11px; color: var(--ink3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .journal-past-empty { font-size: 12px; color: var(--ink3); text-align: center; font-style: italic; font-family: 'DM Serif Display', serif; padding: 1rem 0; }
 
+/* ── Bottom nav ─────────────────────────────────────────────────────────────── */
+.bottom-nav {
+  display: flex;
+  background: var(--paper);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: var(--shadow);
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+}
+.bottom-nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  padding: 10px 8px 8px;
+  border: none; background: none; cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  position: relative; transition: all 0.15s;
+}
+.bnav-icon { font-size: 20px; }
+.bnav-lbl {
+  font-size: 10px; font-weight: 700;
+  color: var(--ink3); letter-spacing: 0.03em;
+}
+.bottom-nav-item.act .bnav-lbl { color: var(--terra); }
+.bottom-nav-item.act .bnav-icon { transform: scale(1.1); }
+.bnav-dot {
+  position: absolute; bottom: 4px;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--terra); display: none;
+}
+.bottom-nav-item.act .bnav-dot { display: block; }
+
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .main {
