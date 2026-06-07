@@ -677,7 +677,7 @@ function HamburgerMenu({ page, setPage }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
   const items = [
-    { id: 'calendar', icon: '📅', label: 'Calendar' },
+    { id: 'calendar', icon: <CalendarIcon size={22} />, label: 'Calendar' },
     { id: 'tasks',    icon: '✅', label: 'Tasks' },
     { id: 'journal',  icon: <img src={journalIcon} alt="journal" style={{width:30,height:30,objectFit:'contain',mixBlendMode:'multiply',marginTop:5}} />, label: 'Journal' },
     { id: 'finance',  icon: '💰', label: 'Finance' },
