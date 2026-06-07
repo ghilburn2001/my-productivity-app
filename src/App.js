@@ -781,6 +781,7 @@ export default function App() {
     { id: 21, name: "Reply to emails", tot: 1, done: 0, time: "10:00", subs: [{ id: 201, name: "Reply to Sarah", done: false }], timerDur: 0, timerActive: false, timerStart: null, timerElapsed: 0 },
   ]);
 
+  // eslint-disable-next-line no-use-before-define
   useEffect(() => {
     if (notifPermission !== 'granted') return;
     Object.values(notifIds.current).forEach(cancelNotification);
