@@ -5,7 +5,7 @@ import "./App.css";
 import pencilIcon from './pencil_icon.png';
 import calendarIcon from './calendar_icon_raw.png';
 import journalIcon from './journal_icon.png';
-import { requestNotificationPermission, scheduleNotification, cancelNotification } from './notifications';
+import { requestNotificationPermission, scheduleNotification, cancelNotification, registerServiceWorker } from './notifications';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (d) => d.toISOString().slice(0, 10);
@@ -735,6 +735,7 @@ export default function App() {
   const notifIds = useRef({});
 
   useEffect(() => {
+    registerServiceWorker();
     requestNotificationPermission().then(granted => {
       setNotifPermission(granted ? 'granted' : 'denied');
     });
