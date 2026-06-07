@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from './supabase';
 import "./App.css";
 import pencilIcon from './pencil_icon.png';
 import calendarIcon from './calendar_icon_raw.png';
@@ -203,7 +204,7 @@ function TodoItem({ t, onToggle, onDelete, onEdit, onTimerOpen }) {
         <button className="timer-open-btn" onClick={() => onTimerOpen(t)}>⏱ Timer</button>
       )}
       {t.time && <span className="tbadge">{fmtT(t.time)}</span>}
-      <button className="editbtn" onClick={() => onEdit(t)} title="Edit task"><img src={pencilIcon} alt="edit" style={{width:30, height:30, marginTop:8}} /></button>
+      <button className="editbtn" onClick={() => onEdit(t)} title="Edit task"><img src={pencilIcon} alt="edit" style={{width:15, height:15, marginTop:4}} /></button>
       <button className="delbtn" onClick={() => onDelete(t.id)}>✕</button>
     </div>
   );
@@ -534,12 +535,91 @@ function CalendarIcon({ size = 36 }) {
   );
 }
 
+// ── Journal page ──────────────────────────────────────────────────────────────
+function JournalPage({ journals, setJournals, today }) {
+  const [date, setDate] = useState(fmt(today));
+  const [text, setText] = useState(journals[fmt(today)]?.text || "");
+
+  const handleDateChange = (newDate) => {
+    setDate(newDate);
+    setText(journals[newDate]?.text || "");
+  };
+
+  const handleSave = async () => {
+    const entry = { date, text, updated_at: new Date().toISOString() };
+    setJournals(prev => ({ ...prev, [date]: entry }));
+    await supabase.from('journals').upsert(entry, { onConflict: 'date' });
+  };
+
+  const displayDate = new Date(date + "T12:00:00");
+  const dateLabel = displayDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+  return (
+    <div className="journal-page">
+      <div className="journal-card">
+        <div className="journal-header">
+          <div className="journal-header-left">
+            <div className="journal-date-label">{dateLabel}</div>
+            <input type="date" className="journal-date-input" value={date} onChange={(e) => handleDateChange(e.target.value)} />
+          </div>
+        </div>
+        <div className="journal-divider" />
+        <textarea
+          className="journal-textarea"
+          value={text}
+          onChange={(e) => { setText(e.target.value); }}
+          onBlur={handleSave}
+          placeholder="What's on your mind today…"
+        />
+        <div className="journal-footer">
+          <span className="journal-word-count">{text.trim() ? text.trim().split(/\s+/).length : 0} words</span>
+          <button className="journal-save-btn" onClick={handleSave}>Save entry ✓</button>
+        </div>
+      </div>
+      <div className="journal-past">
+        <div className="journal-past-title">Past entries</div>
+        {Object.entries(journals).sort((a,b) => b[0].localeCompare(a[0])).map(([d, entry]) => {
+          const dl = new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+          return (
+            <div key={d} className={`journal-past-item${d === date ? " active" : ""}`} onClick={() => handleDateChange(d)}>
+              <div className="journal-past-date">{dl}</div>
+              <div className="journal-past-preview">{entry.text.slice(0, 60)}{entry.text.length > 60 ? "…" : ""}</div>
+            </div>
+          );
+        })}
+        {Object.keys(journals).length === 0 && <div className="journal-past-empty">No past entries yet</div>}
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [page, setPage] = useState("calendar"); // "calendar" | "tasks"
+  const [page, setPage] = useState("calendar"); // "calendar" | "tasks" | "journal"
+  const [journals, setJournals] = useState({});
+  const [journalDate, setJournalDate] = useState(fmt(today));
+
+  // ── Load from Supabase on mount ───────────────────────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: todosData }, { data: calsData }, { data: journalsData }] = await Promise.all([
+        supabase.from('todos').select('*').order('created_at'),
+        supabase.from('cals').select('*').order('created_at'),
+        supabase.from('journals').select('*').order('date', { ascending: false }),
+      ]);
+      if (todosData) setTodos(todosData.map(t => ({ ...t, timerDur: t.timer_dur || 0, timerActive: false, timerStart: null, timerElapsed: 0, subs: t.subs || [] })));
+      if (calsData) setCals(calsData);
+      if (journalsData) {
+        const j = {};
+        journalsData.forEach(e => { j[e.date] = e; });
+        setJournals(j);
+      }
+    };
+    load();
+  }, []);
   const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(new Date(today));
   const [modal, setModal] = useState(null); // "todo" | "event" | null
@@ -589,26 +669,31 @@ export default function App() {
     .sort((a, b) => a.time.localeCompare(b.time));
 
   // ── Save handlers ─────────────────────────────────────────────────────────
-  const handleSave = (type, data) => {
+  const handleSave = async (type, data) => {
     if (type === "todo") {
       if (editingTodo) {
+        const updated = { name: data.name, time: data.time, tot: data.rep, timer_dur: data.timerDur || 0, subs: data.subs };
         setTodos((prev) => prev.map((t) => t.id === editingTodo.id
-          ? { ...t, name: data.name, time: data.time, tot: data.rep, timerDur: data.timerDur, timerActive: false, timerStart: null, timerElapsed: 0, subs: data.subs }
+          ? { ...t, ...updated, timerDur: updated.timer_dur, timerActive: false, timerStart: null, timerElapsed: 0 }
           : t
         ));
         setEditingTodo(null);
+        await supabase.from('todos').update(updated).eq('id', editingTodo.id);
       } else {
-        setTodos((prev) => [...prev, { id: uid(), name: data.name, tot: data.rep, done: 0, time: data.time, timerDur: data.timerDur, timerActive: false, timerStart: null, timerElapsed: 0, subs: [] }]);
+        const newTodo = { id: uid(), name: data.name, tot: data.rep || 1, done: 0, time: data.time, timer_dur: data.timerDur || 0, subs: data.subs || [], created_at: new Date().toISOString() };
+        setTodos((prev) => [...prev, { ...newTodo, timerDur: newTodo.timer_dur, timerActive: false, timerStart: null, timerElapsed: 0 }]);
+        await supabase.from('todos').insert(newTodo);
       }
     } else if (type === "event") {
       if (editingEvent) {
-        setCals((prev) => prev.map((ev) => ev.id === editingEvent.id
-          ? { ...ev, title: data.name, time: data.time || "09:00", date: data.date }
-          : ev
-        ));
+        const updated = { title: data.name, time: data.time || "09:00", date: data.date };
+        setCals((prev) => prev.map((ev) => ev.id === editingEvent.id ? { ...ev, ...updated } : ev));
         setEditingEvent(null);
+        await supabase.from('cals').update(updated).eq('id', editingEvent.id);
       } else {
-        setCals((prev) => [...prev, { id: uid(), title: data.name, type: "event", date: data.date, time: data.time || "09:00" }]);
+        const newCal = { id: uid(), title: data.name, type: "event", date: data.date, time: data.time || "09:00", created_at: new Date().toISOString() };
+        setCals((prev) => [...prev, newCal]);
+        await supabase.from('cals').insert(newCal);
       }
     }
   };
@@ -617,7 +702,10 @@ export default function App() {
     setEditingEvent(ev);
     setModal("event");
   };
-  const delCal = (id) => setCals((prev) => prev.filter((ev) => ev.id !== id));
+  const delCal = async (id) => {
+    setCals((prev) => prev.filter((ev) => ev.id !== id));
+    await supabase.from('cals').delete().eq('id', id);
+  };
 
   const openEditTodo = (t) => { setEditingTodo(t); setModal("todo"); };
 
@@ -644,12 +732,20 @@ export default function App() {
   const timerClose = useCallback(() => setActiveTimer((prev) => prev ? { ...prev, visible: false } : prev), []);
 
   // ── Todo actions ──────────────────────────────────────────────────────────
-  const togT = (id) => setTodos((prev) => prev.map((t) => {
-    if (t.id !== id) return t;
-    if ((t.tot || 1) > 1) return { ...t, done: (t.done + 1) % ((t.tot || 1) + 1) };
-    return { ...t, done: t.done ? 0 : 1 };
-  }));
-  const delT = (id) => setTodos((prev) => prev.filter((t) => t.id !== id));
+  const togT = async (id) => {
+    setTodos((prev) => prev.map((t) => {
+      if (t.id !== id) return t;
+      const updated = (t.tot || 1) > 1
+        ? { ...t, done: (t.done + 1) % ((t.tot || 1) + 1) }
+        : { ...t, done: t.done ? 0 : 1 };
+      supabase.from('todos').update({ done: updated.done }).eq('id', id);
+      return updated;
+    }));
+  };
+  const delT = async (id) => {
+    setTodos((prev) => prev.filter((t) => t.id !== id));
+    await supabase.from('todos').delete().eq('id', id);
+  };
 
   // ── Today's schedule ──────────────────────────────────────────────────────
   const todayEvents = cals.filter((ev) => ev.date === fmt(today)).sort((a, b) => a.time.localeCompare(b.time));
@@ -701,6 +797,7 @@ export default function App() {
                 Calendar
               </button>
               <button className={`page-tab${page === "tasks" ? " active" : ""}`} onClick={() => setPage("tasks")}>🗒 Tasks</button>
+              <button className={`page-tab${page === "journal" ? " active" : ""}`} onClick={() => setPage("journal")}>📓 Journal</button>
             </div>
           </div>
         </header>
@@ -752,7 +849,7 @@ export default function App() {
                         <span style={{ fontSize: 13 }}>📅</span>
                         <span className="schit-name">{ev.title}</span>
                         <span className="schit-time">{h12}:{String(mm).padStart(2, "0")}{ap}</span>
-                        <button className="editbtn" onClick={() => openEditEvent(ev)} title="Edit event"><img src={pencilIcon} alt="edit" style={{width:30, height:30, marginTop:8}} /></button>
+                        <button className="editbtn" onClick={() => openEditEvent(ev)} title="Edit event"><img src={pencilIcon} alt="edit" style={{width:15, height:15, marginTop:4}} /></button>
                         <button className="delbtn" onClick={() => delCal(ev.id)}>✕</button>
                       </div>
                     );
@@ -764,6 +861,10 @@ export default function App() {
         )}
 
         {/* Tasks page */}
+        {page === "journal" && (
+          <JournalPage journals={journals} setJournals={setJournals} today={today} />
+        )}
+
         {page === "tasks" && (
           <div className="tasks-page">
             <div className="sc sc-ruled" style={{ gridColumn: "1 / -1" }}>
