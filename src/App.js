@@ -623,6 +623,7 @@ export default function App() {
   const [cursor, setCursor] = useState(new Date(today));
   const [modal, setModal] = useState(null); // "todo" | "event" | null
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const addBtnRef = useRef(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [editingTodo, setEditingTodo] = useState(null);
   const [activeTimer, setActiveTimer] = useState(null);
@@ -778,25 +779,30 @@ export default function App() {
               {DAY_NAMES[today.getDay()]}, {MONTHS[today.getMonth()]} {today.getDate()}, {today.getFullYear()}
             </div>
           </div>
-          <div className="header-center" style={{position:"relative"}}>
-            <button className="add-plus-btn" onClick={() => setShowAddMenu(m => !m)}>+</button>
-            {showAddMenu && (
-              <>
-                <div className="add-menu-backdrop" onClick={() => setShowAddMenu(false)} />
-                <div className="add-menu">
-                  <button className="add-menu-item" onClick={() => { setModal("todo"); setShowAddMenu(false); }}>
-                    <span>✅</span> Task
-                  </button>
-                  <button className="add-menu-item" onClick={() => { setModal("event"); setShowAddMenu(false); }}>
-                    <span style={{position:"relative",display:"inline-flex",verticalAlign:"middle",width:15,height:15,flexShrink:0}}>
-                      <img src={calendarIcon} alt="calendar" style={{width:15,height:15,mixBlendMode:"multiply"}} />
-                      <span style={{position:"absolute",top:1,left:1,right:0,textAlign:"left",fontSize:3,fontWeight:800,color:"#fff",letterSpacing:"0.04em",lineHeight:1,pointerEvents:"none"}}>JAN</span>
-                      <span style={{position:"absolute",top:6,left:0,right:0,textAlign:"center",fontSize:5,fontWeight:700,color:"var(--ink)",lineHeight:1,pointerEvents:"none"}}>1</span>
-                    </span> Event
-                  </button>
-                </div>
-              </>
-            )}
+          <div className="header-center">
+            <button ref={addBtnRef} className="add-plus-btn" onClick={() => setShowAddMenu(m => !m)}>+</button>
+            {showAddMenu && (() => {
+              const rect = addBtnRef.current?.getBoundingClientRect();
+              const top = rect ? rect.bottom + 8 : 70;
+              const left = rect ? rect.left + rect.width / 2 : 0;
+              return (
+                <>
+                  <div className="add-menu-backdrop" onClick={() => setShowAddMenu(false)} />
+                  <div className="add-menu" style={{position:"fixed", top, left, transform:"translateX(-50%)"}}>
+                    <button className="add-menu-item" onClick={() => { setModal("todo"); setShowAddMenu(false); }}>
+                      <span>✅</span> Task
+                    </button>
+                    <button className="add-menu-item" onClick={() => { setModal("event"); setShowAddMenu(false); }}>
+                      <span style={{position:"relative",display:"inline-flex",verticalAlign:"middle",width:15,height:15,flexShrink:0}}>
+                        <img src={calendarIcon} alt="calendar" style={{width:15,height:15,mixBlendMode:"multiply"}} />
+                        <span style={{position:"absolute",top:1,left:1,right:0,textAlign:"left",fontSize:3,fontWeight:800,color:"#fff",letterSpacing:"0.04em",lineHeight:1,pointerEvents:"none"}}>JAN</span>
+                        <span style={{position:"absolute",top:6,left:0,right:0,textAlign:"center",fontSize:5,fontWeight:700,color:"var(--ink)",lineHeight:1,pointerEvents:"none"}}>1</span>
+                      </span> Event
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </header>
 
