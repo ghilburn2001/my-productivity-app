@@ -1,3 +1,6 @@
+import { requestFCMToken } from './firebase';
+import { supabase } from './supabase';
+
 export async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null;
   try {
@@ -16,20 +19,24 @@ export async function requestNotificationPermission() {
   return permission === 'granted';
 }
 
+export async function setupFCM() {
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+  await registerServiceWorker();
+  const token = await requestFCMToken();
+  if (token) {
+    await supabase.from('fcm_tokens').upsert({ token, updated_at: new Date().toISOString() }, { onConflict: 'token' });
+  }
+}
+
 export function scheduleNotification(title, body, fireAt) {
-  const now = Date.now();
-  const delay = fireAt - now;
+  const delay = fireAt - Date.now();
   if (delay <= 0) return null;
-  const id = setTimeout(() => {
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.ready.then(reg => {
-        reg.showNotification(title, { body, icon: '/favicon.ico' });
-      });
-    } else if (Notification.permission === 'granted') {
+  return setTimeout(() => {
+    if (Notification.permission === 'granted') {
       new Notification(title, { body, icon: '/favicon.ico' });
     }
   }, delay);
-  return id;
 }
 
 export function cancelNotification(id) {

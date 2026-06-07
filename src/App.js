@@ -5,7 +5,7 @@ import "./App.css";
 import pencilIcon from './pencil_icon.png';
 import calendarIcon from './calendar_icon_raw.png';
 import journalIcon from './journal_icon.png';
-import { requestNotificationPermission, scheduleNotification, cancelNotification, registerServiceWorker } from './notifications';
+import { setupFCM, scheduleNotification, cancelNotification } from './notifications';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (d) => d.toISOString().slice(0, 10);
@@ -735,10 +735,10 @@ export default function App() {
   const notifIds = useRef({});
 
   useEffect(() => {
-    registerServiceWorker();
-    requestNotificationPermission().then(granted => {
-      setNotifPermission(granted ? 'granted' : 'denied');
+    setupFCM().then(() => {
+      if ('Notification' in window) setNotifPermission(Notification.permission);
     });
+    // eslint-disable-next-line
   }, []);
 
   // ── Load from Supabase on mount ───────────────────────────────────────────
@@ -970,7 +970,7 @@ export default function App() {
         {notifPermission === 'default' && (
           <div className="notif-banner">
             <span>Enable notifications for event reminders</span>
-            <button onClick={() => requestNotificationPermission().then(g => setNotifPermission(g ? 'granted' : 'denied'))}>
+            <button onClick={() => setupFCM().then(() => { if ('Notification' in window) setNotifPermission(Notification.permission); })}>
               Enable →
             </button>
           </div>
