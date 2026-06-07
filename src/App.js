@@ -600,7 +600,6 @@ export default function App() {
 
   const [page, setPage] = useState("calendar"); // "calendar" | "tasks" | "journal"
   const [journals, setJournals] = useState({});
-  const [journalDate, setJournalDate] = useState(fmt(today));
 
   // ── Load from Supabase on mount ───────────────────────────────────────────
   useEffect(() => {
