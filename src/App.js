@@ -757,22 +757,6 @@ export default function App() {
     };
     load();
   }, []);
-  useEffect(() => {
-    if (notifPermission !== 'granted') return;
-    Object.values(notifIds.current).forEach(cancelNotification);
-    notifIds.current = {};
-    cals.forEach(ev => {
-      if (!ev.date || !ev.time || !ev.reminder) return;
-      const eventTime = new Date(ev.date + 'T' + ev.time);
-      const fireAt = eventTime.getTime() - ev.reminder * 60 * 1000;
-      const id = scheduleNotification(
-        `📅 ${ev.title}`,
-        `Starting in ${ev.reminder} minute${ev.reminder !== 1 ? 's' : ''}`,
-        fireAt
-      );
-      if (id) notifIds.current[ev.id] = id;
-    });
-  }, [cals, notifPermission]);
 
   const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(new Date(today));
@@ -796,6 +780,23 @@ export default function App() {
     { id: 20, name: "Review project brief", tot: 1, done: 0, time: null, subs: [], timerDur: 0, timerActive: false, timerStart: null, timerElapsed: 0 },
     { id: 21, name: "Reply to emails", tot: 1, done: 0, time: "10:00", subs: [{ id: 201, name: "Reply to Sarah", done: false }], timerDur: 0, timerActive: false, timerStart: null, timerElapsed: 0 },
   ]);
+
+  useEffect(() => {
+    if (notifPermission !== 'granted') return;
+    Object.values(notifIds.current).forEach(cancelNotification);
+    notifIds.current = {};
+    cals.forEach(ev => {
+      if (!ev.date || !ev.time || !ev.reminder) return;
+      const eventTime = new Date(ev.date + 'T' + ev.time);
+      const fireAt = eventTime.getTime() - ev.reminder * 60 * 1000;
+      const id = scheduleNotification(
+        `📅 ${ev.title}`,
+        `Starting in ${ev.reminder} minute${ev.reminder !== 1 ? 's' : ''}`,
+        fireAt
+      );
+      if (id) notifIds.current[ev.id] = id;
+    });
+  }, [cals, notifPermission]);
 
   // ── Nav ───────────────────────────────────────────────────────────────────
   const nav = (dir) => {
