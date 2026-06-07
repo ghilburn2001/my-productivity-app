@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 export async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js');
+    const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     return reg;
   } catch (err) {
     console.error('SW registration failed:', err);
