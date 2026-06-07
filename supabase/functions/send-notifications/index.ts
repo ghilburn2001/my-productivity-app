@@ -6,43 +6,33 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('DB_SERVICE_ROLE_KEY')!
 const SERVICE_ACCOUNT = JSON.parse(Deno.env.get('FIREBASE_SERVICE_ACCOUNT')!)
 
-function pemToArrayBuffer(pem: string) {
-  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '')
-  const binary = atob(b64)
-  const buffer = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i)
-  return buffer.buffer
-}
-
 async function getFirebaseAccessToken() {
   const now = Math.floor(Date.now() / 1000)
-  const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-  const payload = btoa(JSON.stringify({
+  const claim = {
     iss: SERVICE_ACCOUNT.client_email,
-    sub: SERVICE_ACCOUNT.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
     aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
     exp: now + 3600,
-    scope: 'https://www.googleapis.com/auth/firebase.messaging'
-  }))
-  const signInput = `${header}.${payload}`
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    pemToArrayBuffer(SERVICE_ACCOUNT.private_key),
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false, ['sign']
-  )
-  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(signInput))
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-  const jwt = `${signInput}.${sigB64}`
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    iat: now,
+  }
+  const header = { alg: 'RS256', typ: 'JWT' }
+  const enc = (obj: object) => btoa(JSON.stringify(obj)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const input = `${enc(header)}.${enc(claim)}`
+  const privateKey = SERVICE_ACCOUNT.private_key
+  const pemContents = privateKey.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\n/g, '')
+  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0))
+  const key = await crypto.subtle.importKey('pkcs8', binaryKey, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign'])
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(input))
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const jwt = `${input}.${sigB64}`
+  const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   })
-  const tokenData = await tokenRes.json()
-  console.log('Firebase token response:', tokenData.access_token ? 'got token' : JSON.stringify(tokenData))
-  return tokenData.access_token
+  const data = await res.json()
+  console.log('Token response:', data.access_token ? 'OK' : JSON.stringify(data))
+  return data.access_token
 }
 
 serve(async () => {
@@ -54,10 +44,11 @@ serve(async () => {
     const { data: tokens, error: tokError } = await supabase.from('fcm_tokens').select('token')
     console.log('Tokens found:', tokens?.length, tokError?.message)
     if (!events || !tokens || tokens.length === 0) return new Response('No data', { status: 200 })
-    const now = new Date()
     const accessToken = await getFirebaseAccessToken()
+    const now = new Date()
     for (const event of events) {
-      const eventTime = new Date(`${event.date}T${event.time}`)
+      // Treat stored times as PDT (UTC-7) since events are entered in local time
+      const eventTime = new Date(`${event.date}T${event.time}:00-07:00`)
       const reminderTime = new Date(eventTime.getTime() - event.reminder * 60 * 1000)
       const diff = Math.abs(reminderTime.getTime() - now.getTime())
       console.log(`Event: ${event.title}, reminderTime: ${reminderTime.toISOString()}, diff: ${diff}ms, threshold: 60000ms`)
