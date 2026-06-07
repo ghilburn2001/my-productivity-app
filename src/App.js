@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import "./App.css";
 import pencilIcon from './pencil_icon.png';
 import calendarIcon from './calendar_icon_raw.png';
+import journalIcon from './journal_icon.png';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (d) => d.toISOString().slice(0, 10);
@@ -593,6 +594,118 @@ function JournalPage({ journals, setJournals, today }) {
   );
 }
 
+// ── Finance page ──────────────────────────────────────────────────────────────
+function Spreadsheet({ title }) {
+  const [headers, setHeaders] = useState(['Date', 'Item', 'Amount']);
+  const [rows, setRows] = useState([['', '', '']]);
+
+  const updateHeader = (i, val) => setHeaders(prev => prev.map((h, j) => j === i ? val : h));
+  const updateCell = (row, col, val) => setRows(prev => prev.map((r, i) => i === row ? r.map((c, j) => j === col ? val : c) : r));
+  const addRow = () => setRows(prev => [...prev, ['', '', '']]);
+  const removeRow = () => setRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev);
+  const total = rows.reduce((sum, r) => { const n = parseFloat(r[2]); return sum + (isNaN(n) ? 0 : n); }, 0);
+
+  return (
+    <div className="finance-card">
+      <div className="finance-card-header">
+        <span className="finance-card-title">{title}</span>
+      </div>
+      <div className="finance-table-wrap">
+        <table className="finance-table">
+          <thead>
+            <tr>
+              <th className="finance-row-num" />
+              {headers.map((h, i) => (
+                <th key={i}>
+                  <input className="finance-header-input" value={h} onChange={e => updateHeader(i, e.target.value)} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIdx) => (
+              <tr key={rowIdx}>
+                <td className="finance-row-num">{rowIdx + 1}</td>
+                {row.map((cell, colIdx) => (
+                  <td key={colIdx}>
+                    {colIdx === 0 ? (
+                      <input type="date" className="finance-cell-input finance-date-input" value={cell} onChange={e => updateCell(rowIdx, colIdx, e.target.value)} />
+                    ) : colIdx === 2 ? (
+                      <div className="finance-cost-cell">
+                        <span className="finance-dollar">$</span>
+                        <input className="finance-cell-input" value={cell} onChange={e => updateCell(rowIdx, colIdx, e.target.value.replace(/[^0-9.]/g, ''))} />
+                      </div>
+                    ) : (
+                      <input className="finance-cell-input" value={cell} onChange={e => updateCell(rowIdx, colIdx, e.target.value)} />
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr className="finance-total-row">
+              <td className="finance-row-num" />
+              <td className="finance-total-label">Total</td>
+              <td className="finance-total-value">${total % 1 === 0 ? total : total.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="finance-row-btns">
+        <button className="finance-add-row" onClick={addRow}>+ Add Row</button>
+        <button className="finance-remove-row" onClick={removeRow}>− Delete Row</button>
+      </div>
+    </div>
+  );
+}
+
+function FinancePage() {
+  return (
+    <div className="finance-page">
+      <Spreadsheet title="Income" />
+      <Spreadsheet title="Expenses" />
+    </div>
+  );
+}
+
+// ── Hamburger menu ────────────────────────────────────────────────────────────
+function HamburgerMenu({ page, setPage }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+  const items = [
+    { id: 'calendar', icon: '📅', label: 'Calendar' },
+    { id: 'tasks',    icon: '✅', label: 'Tasks' },
+    { id: 'journal',  icon: <img src={journalIcon} alt="journal" style={{width:30,height:30,objectFit:'contain',mixBlendMode:'multiply',marginTop:5}} />, label: 'Journal' },
+    { id: 'finance',  icon: '💰', label: 'Finance' },
+  ];
+  return (
+    <div className="ham-wrap" ref={ref}>
+      <button className={`hamburger${open ? ' open' : ''}`} onClick={() => setOpen(!open)} aria-label="Navigation">
+        <span className="hbar" /><span className="hbar" /><span className="hbar" />
+      </button>
+      {open && (
+        <div className="ham-dropdown">
+          {items.map((item, i) => (
+            <>
+              {i === 3 && <div className="ham-divider" key="div" />}
+              <button key={item.id} className={`ham-item${page === item.id ? ' active' : ''}`}
+                onClick={() => { setPage(item.id); setOpen(false); }}>
+                <span className="ham-icon">{item.icon}</span>
+                {item.label}
+                {page === item.id && <span className="ham-dot" />}
+              </button>
+            </>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const today = new Date();
@@ -773,6 +886,7 @@ export default function App() {
       <div className="wrap">
         {/* Header */}
         <header className="header">
+          <HamburgerMenu page={page} setPage={setPage} />
           <div className="header-left">
             <div className="app-name">My Planner</div>
             <div className="app-date">
@@ -784,7 +898,8 @@ export default function App() {
             {showAddMenu && (() => {
               const rect = addBtnRef.current?.getBoundingClientRect();
               const top = rect ? rect.bottom + 8 : 70;
-              const left = rect ? rect.left + rect.width / 2 : 0;
+              const rawLeft = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+              const left = Math.min(Math.max(rawLeft, 80), window.innerWidth - 80);
               return (
                 <>
                   <div className="add-menu-backdrop" onClick={() => setShowAddMenu(false)} />
@@ -869,6 +984,8 @@ export default function App() {
           <JournalPage journals={journals} setJournals={setJournals} today={today} />
         )}
 
+        {page === "finance" && <FinancePage />}
+
         {page === "tasks" && (
           <div className="tasks-page">
             <div className="sc sc-ruled" style={{ gridColumn: "1 / -1" }}>
@@ -883,23 +1000,6 @@ export default function App() {
             </div>
           </div>
         )}
-        <nav className="bottom-nav">
-          <button className={`bottom-nav-item${page === "calendar" ? " act" : ""}`} onClick={() => setPage("calendar")}>
-            <CalendarIcon size={22} />
-            <span className="bnav-lbl">Calendar</span>
-            <span className="bnav-dot" />
-          </button>
-          <button className={`bottom-nav-item${page === "tasks" ? " act" : ""}`} onClick={() => setPage("tasks")}>
-            <span className="bnav-icon">✅</span>
-            <span className="bnav-lbl">Tasks</span>
-            <span className="bnav-dot" />
-          </button>
-          <button className={`bottom-nav-item${page === "journal" ? " act" : ""}`} onClick={() => setPage("journal")}>
-            <span className="bnav-icon">📓</span>
-            <span className="bnav-lbl">Journal</span>
-            <span className="bnav-dot" />
-          </button>
-        </nav>
       </div>
       <FloatingTimer
         timer={activeTimer}
