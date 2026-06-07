@@ -45,16 +45,21 @@ function pemToArrayBuffer(pem: string) {
 
 serve(async () => {
   try {
+    console.log('Function started at:', new Date().toISOString())
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    const { data: events } = await supabase.from('cals').select('*').gt('reminder', 0)
-    const { data: tokens } = await supabase.from('fcm_tokens').select('token')
+    const { data: events, error: evError } = await supabase.from('cals').select('*').gt('reminder', 0)
+    console.log('Events found:', events?.length, evError?.message)
+    const { data: tokens, error: tokError } = await supabase.from('fcm_tokens').select('token')
+    console.log('Tokens found:', tokens?.length, tokError?.message)
     if (!events || !tokens || tokens.length === 0) return new Response('No data', { status: 200 })
     const now = new Date()
+    console.log('Now:', now.toISOString())
     const accessToken = await getFirebaseAccessToken()
     for (const event of events) {
       const eventTime = new Date(`${event.date}T${event.time}`)
       const reminderTime = new Date(eventTime.getTime() - event.reminder * 60 * 1000)
       const diff = Math.abs(reminderTime.getTime() - now.getTime())
+      console.log(`Event: ${event.title}, reminderTime: ${reminderTime.toISOString()}, diff: ${diff}ms`)
       if (diff < 60000) {
         for (const { token } of tokens) {
           await fetch(`https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`, {
