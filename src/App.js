@@ -4,6 +4,7 @@ import "./App.css";
 import pencilIcon from './pencil_icon.png';
 import calendarIcon from './calendar_icon_raw.png';
 import journalIcon from './journal_icon.png';
+import { requestNotificationPermission, scheduleNotification, cancelNotification } from './notifications';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (d) => d.toISOString().slice(0, 10);
@@ -64,6 +65,7 @@ function Modal({ type, onClose, onSave, today, editData }) {
   const [timerInput, setTimerInput] = useState(editData?.timerDur ? fmtSecs(editData.timerDur) : "");
   const [subs, setSubs] = useState(editData?.subs || []);
   const [subInput, setSubInput] = useState("");
+  const [reminder, setReminder] = useState(editData?.reminder || 0);
 
   useEffect(() => {
     const handler = (e) => { if (e.key === "Escape") onClose(); };
@@ -73,7 +75,7 @@ function Modal({ type, onClose, onSave, today, editData }) {
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), time: time || null, date: date || fmt(today), notes, rep, timerDur: parseDur(timerInput), subs });
+    onSave({ name: name.trim(), time: time || null, date: date || fmt(today), notes, rep, timerDur: parseDur(timerInput), subs, reminder });
     onClose();
   };
 
@@ -132,6 +134,21 @@ function Modal({ type, onClose, onSave, today, editData }) {
             placeholder="Any extra details…"
           />
         </div>
+
+        {type === "event" && (
+          <div className="field">
+            <label>REMIND ME</label>
+            <select value={reminder} onChange={e => setReminder(Number(e.target.value))}>
+              <option value={0}>No reminder</option>
+              <option value={5}>5 minutes before</option>
+              <option value={15}>15 minutes before</option>
+              <option value={30}>30 minutes before</option>
+              <option value={60}>1 hour before</option>
+              <option value={120}>2 hours before</option>
+              <option value={1440}>1 day before</option>
+            </select>
+          </div>
+        )}
 
         {type === "todo" && (
           <div className="field">
@@ -713,6 +730,14 @@ export default function App() {
 
   const [page, setPage] = useState("calendar"); // "calendar" | "tasks" | "journal"
   const [journals, setJournals] = useState({});
+  const [notifPermission, setNotifPermission] = useState(('Notification' in window ? Notification.permission : 'denied'));
+  const notifIds = useRef({});
+
+  useEffect(() => {
+    requestNotificationPermission().then(granted => {
+      setNotifPermission(granted ? 'granted' : 'denied');
+    });
+  }, []);
 
   // ── Load from Supabase on mount ───────────────────────────────────────────
   useEffect(() => {
@@ -732,6 +757,23 @@ export default function App() {
     };
     load();
   }, []);
+  useEffect(() => {
+    if (notifPermission !== 'granted') return;
+    Object.values(notifIds.current).forEach(cancelNotification);
+    notifIds.current = {};
+    cals.forEach(ev => {
+      if (!ev.date || !ev.time || !ev.reminder) return;
+      const eventTime = new Date(ev.date + 'T' + ev.time);
+      const fireAt = eventTime.getTime() - ev.reminder * 60 * 1000;
+      const id = scheduleNotification(
+        `📅 ${ev.title}`,
+        `Starting in ${ev.reminder} minute${ev.reminder !== 1 ? 's' : ''}`,
+        fireAt
+      );
+      if (id) notifIds.current[ev.id] = id;
+    });
+  }, [cals, notifPermission]);
+
   const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(new Date(today));
   const [modal, setModal] = useState(null); // "todo" | "event" | null
@@ -800,12 +842,12 @@ export default function App() {
       }
     } else if (type === "event") {
       if (editingEvent) {
-        const updated = { title: data.name, time: data.time || "09:00", date: data.date };
+        const updated = { title: data.name, time: data.time || "09:00", date: data.date, reminder: data.reminder || 0 };
         setCals((prev) => prev.map((ev) => ev.id === editingEvent.id ? { ...ev, ...updated } : ev));
         setEditingEvent(null);
         await supabase.from('cals').update(updated).eq('id', editingEvent.id);
       } else {
-        const newCal = { id: uid(), title: data.name, type: "event", date: data.date, time: data.time || "09:00", created_at: new Date().toISOString() };
+        const newCal = { id: uid(), title: data.name, type: "event", date: data.date, time: data.time || "09:00", reminder: data.reminder || 0, created_at: new Date().toISOString() };
         setCals((prev) => [...prev, newCal]);
         await supabase.from('cals').insert(newCal);
       }
@@ -875,7 +917,7 @@ export default function App() {
           onSave={(data) => handleSave(modal, data)}
           editData={
             modal === "event" && editingEvent
-              ? { name: editingEvent.title, time: editingEvent.time || "", date: editingEvent.date }
+              ? { name: editingEvent.title, time: editingEvent.time || "", date: editingEvent.date, reminder: editingEvent.reminder || 0 }
               : modal === "todo" && editingTodo
               ? { name: editingTodo.name, time: editingTodo.time || "", rep: editingTodo.tot || 1, timerDur: editingTodo.timerDur || 0, subs: editingTodo.subs }
               : null
@@ -920,6 +962,15 @@ export default function App() {
             })()}
           </div>
         </header>
+
+        {notifPermission === 'default' && (
+          <div className="notif-banner">
+            <span>Enable notifications for event reminders</span>
+            <button onClick={() => requestNotificationPermission().then(g => setNotifPermission(g ? 'granted' : 'denied'))}>
+              Enable →
+            </button>
+          </div>
+        )}
 
         {/* Calendar page */}
         {page === "calendar" && (
