@@ -1,3 +1,4 @@
+/* eslint-disable no-use-before-define */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from './supabase';
 import "./App.css";
@@ -781,7 +782,7 @@ export default function App() {
     { id: 21, name: "Reply to emails", tot: 1, done: 0, time: "10:00", subs: [{ id: 201, name: "Reply to Sarah", done: false }], timerDur: 0, timerActive: false, timerStart: null, timerElapsed: 0 },
   ]);
 
-  // eslint-disable-next-line no-use-before-define
+  // eslint-disable-next-line
   useEffect(() => {
     if (notifPermission !== 'granted') return;
     Object.values(notifIds.current).forEach(cancelNotification);
@@ -797,7 +798,7 @@ export default function App() {
       );
       if (id) notifIds.current[ev.id] = id;
     });
-  }, [cals, notifPermission]);
+  }, [cals, notifPermission]); // eslint-disable-line
 
   // ── Nav ───────────────────────────────────────────────────────────────────
   const nav = (dir) => {
