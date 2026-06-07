@@ -66,6 +66,7 @@ function Modal({ type, onClose, onSave, today, editData }) {
   const [timerInput, setTimerInput] = useState(editData?.timerDur ? fmtSecs(editData.timerDur) : "");
   const [subs, setSubs] = useState(editData?.subs || []);
   const [subInput, setSubInput] = useState("");
+  const [endTime, setEndTime] = useState(editData?.endTime || "");
   const [reminder, setReminder] = useState(editData?.reminder || 0);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ function Modal({ type, onClose, onSave, today, editData }) {
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), time: time || null, date: date || fmt(today), notes, rep, timerDur: parseDur(timerInput), subs, reminder });
+    onSave({ name: name.trim(), time: time || null, endTime: endTime || null, date: date || fmt(today), notes, rep, timerDur: parseDur(timerInput), subs, reminder });
     onClose();
   };
 
@@ -111,9 +112,15 @@ function Modal({ type, onClose, onSave, today, editData }) {
             </div>
           )}
           <div className="field">
-            <label>TIME {type !== "event" ? "(optional)" : ""}</label>
+            <label>START TIME {type !== "event" ? "(optional)" : ""}</label>
             <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
+          {type === "event" && (
+            <div className="field">
+              <label>END TIME (optional)</label>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            </div>
+          )}
           {type === "todo" && (
             <div className="field">
               <label>REPEAT / DAY</label>
@@ -509,7 +516,7 @@ function DayView({ cursor, cals, timedItems, todos }) {
             return (
               <div key={ev.id} className={`de ${ev.type}`} style={{ top: hh * 48 + mm * 0.8, height: 44 }}>
                 <strong>{ev.title}</strong><br />
-                <span style={{ fontSize: 10 }}>{ev.time}</span>
+                <span style={{ fontSize: 10 }}>{ev.time}{ev.endTime ? ` – ${ev.endTime}` : ''}</span>
               </div>
             );
           })}
@@ -750,7 +757,7 @@ export default function App() {
         supabase.from('journals').select('*').order('date', { ascending: false }),
       ]);
       if (todosData) setTodos(todosData.map(t => ({ ...t, timerDur: t.timer_dur || 0, timerActive: false, timerStart: null, timerElapsed: 0, subs: t.subs || [] })));
-      if (calsData) setCals(calsData);
+      if (calsData) setCals(calsData.map(ev => ({ ...ev, endTime: ev.end_time || null })));
       if (journalsData) {
         const j = {};
         journalsData.forEach(e => { j[e.date] = e; });
@@ -846,13 +853,13 @@ export default function App() {
       }
     } else if (type === "event") {
       if (editingEvent) {
-        const updated = { title: data.name, time: data.time || "09:00", date: data.date, reminder: data.reminder || 0 };
-        setCals((prev) => prev.map((ev) => ev.id === editingEvent.id ? { ...ev, ...updated } : ev));
+        const updated = { title: data.name, time: data.time || "09:00", end_time: data.endTime || null, date: data.date, reminder: data.reminder || 0 };
+        setCals((prev) => prev.map((ev) => ev.id === editingEvent.id ? { ...ev, ...updated, endTime: updated.end_time } : ev));
         setEditingEvent(null);
         await supabase.from('cals').update(updated).eq('id', editingEvent.id);
       } else {
-        const newCal = { id: uid(), title: data.name, type: "event", date: data.date, time: data.time || "09:00", reminder: data.reminder || 0, created_at: new Date().toISOString() };
-        setCals((prev) => [...prev, newCal]);
+        const newCal = { id: uid(), title: data.name, type: "event", date: data.date, time: data.time || "09:00", end_time: data.endTime || null, reminder: data.reminder || 0, created_at: new Date().toISOString() };
+        setCals((prev) => [...prev, { ...newCal, endTime: newCal.end_time }]);
         await supabase.from('cals').insert(newCal);
       }
     }
@@ -921,7 +928,7 @@ export default function App() {
           onSave={(data) => handleSave(modal, data)}
           editData={
             modal === "event" && editingEvent
-              ? { name: editingEvent.title, time: editingEvent.time || "", date: editingEvent.date, reminder: editingEvent.reminder || 0 }
+              ? { name: editingEvent.title, time: editingEvent.time || "", endTime: editingEvent.endTime || editingEvent.end_time || "", date: editingEvent.date, reminder: editingEvent.reminder || 0 }
               : modal === "todo" && editingTodo
               ? { name: editingTodo.name, time: editingTodo.time || "", rep: editingTodo.tot || 1, timerDur: editingTodo.timerDur || 0, subs: editingTodo.subs }
               : null
@@ -1022,7 +1029,7 @@ export default function App() {
                       <div key={ev.id} className="schit">
                         <span style={{ fontSize: 13 }}>📅</span>
                         <span className="schit-name">{ev.title}</span>
-                        <span className="schit-time">{h12}:{String(mm).padStart(2, "0")}{ap}</span>
+                        <span className="schit-time">{h12}:{String(mm).padStart(2, "0")}{ap}{ev.endTime ? ` – ${ev.endTime}` : ''}</span>
                         <button className="editbtn" onClick={() => openEditEvent(ev)} title="Edit event"><img src={pencilIcon} alt="edit" style={{width:15, height:15, marginTop:4}} /></button>
                         <button className="delbtn" onClick={() => delCal(ev.id)}>✕</button>
                       </div>
