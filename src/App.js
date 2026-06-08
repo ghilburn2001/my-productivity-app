@@ -81,7 +81,7 @@ function Modal({ type, onClose, onSave, today, editData }) {
     onClose();
   };
 
-  const isEdit = !!editData;
+  const isEdit = !!(editData && !editData._isNew);
   const config = {
     todo:  { label: isEdit ? "Edit task" : "New task",   sub: "Add a task or daily routine",    btn: isEdit ? "Save changes →" : "Add to list →" },
     event: { label: isEdit ? "Edit event" : "New event", sub: "Add something to your calendar", btn: isEdit ? "Save changes →" : "Add to calendar →" },
@@ -539,7 +539,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
   );
 }
 
-function DayView({ cursor, cals, blocks, onAddBlock, onEditBlock, onDeleteBlock, onDeleteEvent, todos }) {
+function DayView({ cursor, cals, blocks, onAddBlock, onAddEvent, onEditBlock, onDeleteBlock, onDeleteEvent, onEditEvent, todos }) {
   const ds = fmt(cursor);
   const timedCals = cals.filter((ev) => ev.date === ds && ev.time);
   const untimedTodos = todos.filter((t) => {
@@ -556,7 +556,7 @@ function DayView({ cursor, cals, blocks, onAddBlock, onEditBlock, onDeleteBlock,
     const totalMins = Math.round(y / SLOT) * 60;
     const h = Math.floor(totalMins / 60);
     const m = totalMins % 60;
-    onAddBlock(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    onAddEvent(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
   };
 
   return (
@@ -574,11 +574,11 @@ function DayView({ cursor, cals, blocks, onAddBlock, onEditBlock, onDeleteBlock,
           {timedCals.map((ev) => {
             const [hh, mm] = ev.time.split(":").map(Number);
             return (
-              <div key={ev.id} className={`de ${ev.type}`} style={{ top: hh * 48 + mm * 0.8, height: 44 }}
-                onClick={e => e.stopPropagation()}>
+              <div key={ev.id} className={`de ${ev.type}`} style={{ top: hh * 48 + mm * 0.8, height: 44, cursor: 'pointer' }}
+                onClick={e => { e.stopPropagation(); onEditEvent(ev); }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <strong style={{ fontSize: 11 }}>{ev.title}</strong>
-                  <button className="delbtn" style={{ marginTop: -2, flexShrink: 0 }} onClick={() => onDeleteEvent(ev.id)}>✕</button>
+                  <button className="delbtn" style={{ marginTop: -2, flexShrink: 0 }} onClick={e => { e.stopPropagation(); onDeleteEvent(ev.id); }}>✕</button>
                 </div>
                 <span style={{ fontSize: 10 }}>{fmtT(ev.time)}{ev.endTime ? ` – ${fmtT(ev.endTime)}` : ''}</span>
               </div>
@@ -857,6 +857,7 @@ export default function App() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addBtnRef = useRef(null);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [eventDefaults, setEventDefaults] = useState(null);
   const [editingTodo, setEditingTodo] = useState(null);
   const [blocks, setBlocks] = useState([]);
   const [blockModal, setBlockModal] = useState(null);
@@ -947,13 +948,20 @@ export default function App() {
       } else {
         const newCal = { id: uid(), title: data.name, type: "event", date: data.date, time: data.time || "09:00", end_time: data.endTime || null, reminder: data.reminder || 0, created_at: new Date().toISOString() };
         setCals((prev) => [...prev, { ...newCal, endTime: newCal.end_time }]);
+        setEventDefaults(null);
         await supabase.from('cals').insert(newCal);
       }
     }
   };
 
   const openEditEvent = (ev) => {
+    setEventDefaults(null);
     setEditingEvent(ev);
+    setModal("event");
+  };
+  const handleAddEvent = (time) => {
+    setEditingEvent(null);
+    setEventDefaults({ date: fmt(cursor), time: time || '', _isNew: true });
     setModal("event");
   };
   const delCal = async (id) => {
@@ -1040,11 +1048,13 @@ export default function App() {
         <Modal
           type={modal}
           today={today}
-          onClose={() => { setModal(null); setEditingEvent(null); setEditingTodo(null); }}
+          onClose={() => { setModal(null); setEditingEvent(null); setEditingTodo(null); setEventDefaults(null); }}
           onSave={(data) => handleSave(modal, data)}
           editData={
             modal === "event" && editingEvent
               ? { name: editingEvent.title, time: editingEvent.time || "", endTime: editingEvent.endTime || editingEvent.end_time || "", date: editingEvent.date, reminder: editingEvent.reminder || 0 }
+              : modal === "event" && eventDefaults
+              ? eventDefaults
               : modal === "todo" && editingTodo
               ? { name: editingTodo.name, time: editingTodo.time || "", rep: editingTodo.tot || 1, timerDur: editingTodo.timerDur || 0, subs: editingTodo.subs }
               : null
@@ -1101,9 +1111,11 @@ export default function App() {
                 <DayView cursor={cursor} cals={cals} todos={todos}
                   blocks={blocks}
                   onAddBlock={handleAddBlock}
+                  onAddEvent={handleAddEvent}
                   onEditBlock={handleEditBlock}
                   onDeleteBlock={handleDeleteBlock}
                   onDeleteEvent={delCal}
+                  onEditEvent={openEditEvent}
                 />
               )}
             </div>
