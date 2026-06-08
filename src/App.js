@@ -495,6 +495,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
             <select value={kind} onChange={e => setKind(e.target.value)}>
               <option value="task">Task</option>
               <option value="event">Event</option>
+              <option value="open">Open</option>
             </select>
           </div>
           <div className="field"><label>START TIME</label>
