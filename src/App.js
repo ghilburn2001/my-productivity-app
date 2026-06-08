@@ -534,7 +534,7 @@ function DayView({ cursor, cals, timedItems, blocks, onAddBlock, onEditBlock, on
   const handleGridClick = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
-    const totalMins = Math.round(((y / SLOT) * 60) / 15) * 15;
+    const totalMins = Math.round(y / SLOT) * 60;
     const h = Math.floor(totalMins / 60);
     const m = totalMins % 60;
     onAddBlock(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
