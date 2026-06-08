@@ -539,7 +539,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
   );
 }
 
-function DayView({ cursor, cals, blocks, onAddBlock, onEditBlock, onDeleteBlock, todos }) {
+function DayView({ cursor, cals, blocks, onAddBlock, onEditBlock, onDeleteBlock, onDeleteEvent, todos }) {
   const ds = fmt(cursor);
   const timedCals = cals.filter((ev) => ev.date === ds && ev.time);
   const untimedTodos = todos.filter((t) => {
@@ -574,8 +574,12 @@ function DayView({ cursor, cals, blocks, onAddBlock, onEditBlock, onDeleteBlock,
           {timedCals.map((ev) => {
             const [hh, mm] = ev.time.split(":").map(Number);
             return (
-              <div key={ev.id} className={`de ${ev.type}`} style={{ top: hh * 48 + mm * 0.8, height: 44 }}>
-                <strong>{ev.title}</strong><br />
+              <div key={ev.id} className={`de ${ev.type}`} style={{ top: hh * 48 + mm * 0.8, height: 44 }}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                  <strong style={{ fontSize: 11 }}>{ev.title}</strong>
+                  <button className="delbtn" style={{ marginTop: -2, flexShrink: 0 }} onClick={() => onDeleteEvent(ev.id)}>✕</button>
+                </div>
                 <span style={{ fontSize: 10 }}>{fmtT(ev.time)}{ev.endTime ? ` – ${fmtT(ev.endTime)}` : ''}</span>
               </div>
             );
@@ -1114,6 +1118,7 @@ export default function App() {
                   onAddBlock={handleAddBlock}
                   onEditBlock={handleEditBlock}
                   onDeleteBlock={handleDeleteBlock}
+                  onDeleteEvent={delCal}
                 />
               )}
             </div>
