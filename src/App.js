@@ -787,6 +787,7 @@ function HamburgerMenu({ page, setPage }) {
     { id: 'tasks',    icon: '✅', label: 'Tasks' },
     { id: 'journal',  icon: <img src={journalIcon} alt="journal" style={{width:30,height:30,objectFit:'contain',mixBlendMode:'multiply',marginTop:5}} />, label: 'Journal' },
     { id: 'finance',  icon: '$', label: 'Finance' },
+    { id: 'settings', icon: '⚙️', label: 'Settings' },
   ];
   return (
     <div className="ham-wrap" ref={ref}>
@@ -1160,6 +1161,7 @@ export default function App() {
         )}
 
         {page === "finance" && <FinancePage />}
+        {page === "settings" && <div className="settings-page" />}
 
         {page === "tasks" && (
           <div className="tasks-page">
