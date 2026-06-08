@@ -1174,7 +1174,7 @@ export default function App() {
                       <div key={ev.id} className="schit">
                         <span style={{ fontSize: 13 }}>📅</span>
                         <span className="schit-name">{ev.title}</span>
-                        <span className="schit-time">{h12}:{String(mm).padStart(2, "0")}{ap}{ev.endTime ? ` – ${ev.endTime}` : ''}</span>
+                        <span className="schit-time">{h12}:{String(mm).padStart(2, "0")}{ap}{ev.endTime ? ` – ${fmtT(ev.endTime)}` : ''}</span>
                         <button className="editbtn" onClick={() => openEditEvent(ev)} title="Edit event"><img src={pencilIcon} alt="edit" style={{width:15, height:15, marginTop:4}} /></button>
                         <button className="delbtn" onClick={() => delCal(ev.id)}>✕</button>
                       </div>
