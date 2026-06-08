@@ -1101,7 +1101,7 @@ export default function App() {
                   <button className="nav-btn" onClick={() => nav(1)}>›</button>
                 </div>
                 <div className="view-btns">
-                  {["month", "week", "day"].map((v) => (
+                  {["day", "week", "month"].map((v) => (
                     <button key={v} className={`view-btn${view === v ? " active" : ""}`} onClick={() => setView(v)}>
                       {v.charAt(0).toUpperCase() + v.slice(1)}
                     </button>
