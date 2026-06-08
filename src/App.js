@@ -1181,7 +1181,10 @@ export default function App() {
         {page === "tasks" && (
           <div className="tasks-page">
             <div className="sc sc-ruled" style={{ gridColumn: "1 / -1" }}>
-              <div className="st">✅ Tasks</div>
+              <div className="st" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>✅ To-Do</span>
+                <button className="add-block-btn" onClick={() => { setEditingTodo(null); setModal("todo"); }}>＋ Add Task</button>
+              </div>
               <div className="il">
                 {todos.length === 0 ? (
                   <div className="en">Nothing to do — enjoy the quiet ✨</div>
