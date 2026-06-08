@@ -587,13 +587,12 @@ function DayView({ cursor, cals, blocks, onAddBlock, onEditBlock, onDeleteBlock,
             const endMins = bh * 60 + bm + b.dur;
             const eh = Math.floor(endMins / 60), em = endMins % 60;
             return (
-              <div key={b.id} className="time-block" style={{ top, height: Math.max(height, 48) }}
-                onClick={e => e.stopPropagation()}>
+              <div key={b.id} className="time-block" style={{ top, height: Math.max(height, 48), cursor: 'pointer' }}
+                onClick={e => { e.stopPropagation(); onEditBlock(b); }}>
                 <div className="tb-header">
                   <span className="tb-label">{b.label}</span>
                   <span className="tb-time">{fmtT(b.time)}–{fmtT(`${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`)}</span>
-                  <button className="editbtn" onClick={() => onEditBlock(b)}>✏️</button>
-                  <button className="delbtn" onClick={() => onDeleteBlock(b.id)}>✕</button>
+                  <button className="delbtn" onClick={e => { e.stopPropagation(); onDeleteBlock(b.id); }}>✕</button>
                 </div>
               </div>
             );
