@@ -485,8 +485,10 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
   const [customH, setCustomH] = useState(!isPreset && block ? Math.floor((block.dur || 0) / 60) : 0);
   const [customM, setCustomM] = useState(!isPreset && block ? (block.dur || 0) % 60 : 0);
   const [kind, setKind] = useState(block?.kind || 'task');
+  const [reminder, setReminder] = useState(block?.reminder || 0);
 
   const effectiveDur = dur === 'other' ? (customH * 60 + customM) || 60 : dur;
+  const save = () => onSave({ label, time: startTime, dur: effectiveDur, kind, reminder: kind === 'event' ? reminder : 0 });
 
   return (
     <div className="overlay" onClick={onClose}>
@@ -495,7 +497,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
         <div className="modal-sub">A block of time in your day</div>
         <div className="field"><label>BLOCK NAME</label>
           <input autoFocus value={label} onChange={e => setLabel(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onSave({ label, time: startTime, dur: effectiveDur, kind })}
+            onKeyDown={e => e.key === 'Enter' && save()}
             placeholder="e.g. Morning routine, Deep work…" />
         </div>
         <div className="field-row">
@@ -530,9 +532,23 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
             </div>
           </div>
         )}
+        {kind === 'event' && (
+          <div className="field">
+            <label>REMIND ME</label>
+            <select value={reminder} onChange={e => setReminder(Number(e.target.value))}>
+              <option value={0}>No reminder</option>
+              <option value={5}>5 minutes before</option>
+              <option value={15}>15 minutes before</option>
+              <option value={30}>30 minutes before</option>
+              <option value={60}>1 hour before</option>
+              <option value={120}>2 hours before</option>
+              <option value={1440}>1 day before</option>
+            </select>
+          </div>
+        )}
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onClose}>Cancel</button>
-          <button className="btn-save" onClick={() => onSave({ label, time: startTime, dur: effectiveDur, kind })}>Save block →</button>
+          <button className="btn-save" onClick={save}>Save block →</button>
         </div>
       </div>
     </div>
@@ -1035,11 +1051,11 @@ export default function App() {
     const end_time = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
     const blockType = `block-${data.kind || 'task'}`;
     if (editingBlock?.id) {
-      const updated = { title: data.label, time: data.time, end_time, type: blockType };
+      const updated = { title: data.label, time: data.time, end_time, type: blockType, reminder: data.reminder || 0 };
       setCals(prev => prev.map(c => c.id === editingBlock.id ? { ...c, ...updated, endTime: end_time } : c));
       await supabase.from('cals').update(updated).eq('id', editingBlock.id);
     } else {
-      const newBlock = { id: uid(), title: data.label, type: blockType, date: fmt(cursor), time: data.time, end_time, reminder: 0, created_at: new Date().toISOString() };
+      const newBlock = { id: uid(), title: data.label, type: blockType, date: fmt(cursor), time: data.time, end_time, reminder: data.reminder || 0, created_at: new Date().toISOString() };
       setCals(prev => [...prev, { ...newBlock, endTime: end_time }]);
       await supabase.from('cals').insert(newBlock);
     }
