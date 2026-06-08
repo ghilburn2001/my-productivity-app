@@ -559,7 +559,7 @@ function DayView({ cursor, cals, timedItems, blocks, onAddBlock, onEditBlock, on
           })}
         </div>
         <div className="d3tcol">
-          {hours.map((h) => <div key={h} className="ts">{h === 0 ? "" : `${String(h).padStart(2, "0")}:00`}</div>)}
+          {hours.map((h) => <div key={h} className="ts">{h === 0 ? "" : fmtT(`${String(h).padStart(2, '0')}:00`)}</div>)}
         </div>
         <div className="dright" onClick={handleGridClick} style={{ position: 'relative' }}>
           {hours.map((h) => <div key={h} className="dsl" />)}
