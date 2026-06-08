@@ -945,7 +945,8 @@ export default function App() {
       } else {
         const newCal = { id: uid(), title: data.name, type: "event", date: data.date, time: data.time || "09:00", end_time: data.endTime || null, reminder: data.reminder || 0, created_at: new Date().toISOString() };
         setCals((prev) => [...prev, { ...newCal, endTime: newCal.end_time }]);
-        await supabase.from('cals').insert(newCal);
+        const { error: calErr } = await supabase.from('cals').insert(newCal);
+        if (calErr) console.error('cals insert error:', calErr.message);
       }
     }
   };
