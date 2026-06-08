@@ -539,7 +539,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
   );
 }
 
-function DayView({ cursor, cals, timedItems, blocks, onAddBlock, onEditBlock, onDeleteBlock, todos }) {
+function DayView({ cursor, cals, blocks, onAddBlock, onEditBlock, onDeleteBlock, todos }) {
   const ds = fmt(cursor);
   const timedCals = cals.filter((ev) => ev.date === ds && ev.time);
   const untimedTodos = todos.filter((t) => {
@@ -561,34 +561,15 @@ function DayView({ cursor, cals, timedItems, blocks, onAddBlock, onEditBlock, on
 
   return (
     <div>
-      <div className="dhr3">
-        <div className="dhr3-left">ROUTINES &amp; TASKS</div>
-        <div className="dhr3-mid" />
-        <div className="dhr3-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 12 }}>
-          <span>CALENDAR EVENTS</span>
-          <button className="add-block-btn" onClick={() => onAddBlock(null)}>＋ Add block</button>
-        </div>
+      <div className="dhr" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px' }}>
+        <span className="dhr3-right">CALENDAR</span>
+        <button className="add-block-btn" onClick={() => onAddBlock(null)}>＋ Add block</button>
       </div>
-      <div className="dv3">
-        <div className="dleft">
-          {hours.map((h) => <div key={h} className="dsl" />)}
-          {timedItems.map((it, i) => {
-            const [hh, mm] = it.time.split(":").map(Number);
-            return (
-              <div key={i} className="de-rt" style={{
-                top: hh * 48 + mm * 0.8,
-                background: it.tp === "r" ? "var(--terra-light)" : "var(--sage-pale)",
-                color: it.tp === "r" ? "var(--terra)" : "var(--sage)"
-              }}>
-                {fmtT(it.time)} {it.name}
-              </div>
-            );
-          })}
-        </div>
-        <div className="d3tcol">
+      <div className="dv" style={{ display: 'flex' }}>
+        <div className="tcol">
           {hours.map((h) => <div key={h} className="ts">{h === 0 ? "" : fmtT(`${String(h).padStart(2, '0')}:00`)}</div>)}
         </div>
-        <div className="dright" onClick={handleGridClick} style={{ position: 'relative' }}>
+        <div className="dc" onClick={handleGridClick} style={{ position: 'relative', flex: 1 }}>
           {hours.map((h) => <div key={h} className="dsl" />)}
           {timedCals.map((ev) => {
             const [hh, mm] = ev.time.split(":").map(Number);
@@ -1129,7 +1110,7 @@ export default function App() {
                 <WeekView cursor={cursor} today={today} cals={cals} timedItems={timedItems} onSelectDate={(ds) => setCursor(new Date(ds + "T12:00:00"))} />
               )}
               {view === "day" && (
-                <DayView cursor={cursor} cals={cals} timedItems={timedItems} todos={todos}
+                <DayView cursor={cursor} cals={cals} todos={todos}
                   blocks={blocks}
                   onAddBlock={handleAddBlock}
                   onEditBlock={handleEditBlock}
