@@ -539,7 +539,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
   );
 }
 
-function DayView({ cursor, cals, timedItems, blocks, onAddBlock, onEditBlock, onDeleteBlock, onLinkItem, todos }) {
+function DayView({ cursor, cals, timedItems, blocks, onAddBlock, onEditBlock, onDeleteBlock, todos }) {
   const ds = fmt(cursor);
   const timedCals = cals.filter((ev) => ev.date === ds && ev.time);
   const untimedTodos = todos.filter((t) => {
@@ -605,11 +605,6 @@ function DayView({ cursor, cals, timedItems, blocks, onAddBlock, onEditBlock, on
             const height = (b.dur / 60) * SLOT;
             const endMins = bh * 60 + bm + b.dur;
             const eh = Math.floor(endMins / 60), em = endMins % 60;
-            const linkedItems = [...(todos || []), ...(cals || [])].filter(i => (b.linked || []).includes(String(i.id)));
-            const available = [
-              ...(todos || []).map(t => ({ ...t, kind: 'task' })),
-              ...(cals.filter(e => e.date === ds)).map(e => ({ ...e, kind: 'event' }))
-            ].filter(i => !(b.linked || []).includes(String(i.id)));
             return (
               <div key={b.id} className="time-block" style={{ top, height: Math.max(height, 48) }}
                 onClick={e => e.stopPropagation()}>
@@ -618,21 +613,6 @@ function DayView({ cursor, cals, timedItems, blocks, onAddBlock, onEditBlock, on
                   <span className="tb-time">{fmtT(b.time)}–{fmtT(`${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`)}</span>
                   <button className="editbtn" onClick={() => onEditBlock(b)}>✏️</button>
                   <button className="delbtn" onClick={() => onDeleteBlock(b.id)}>✕</button>
-                </div>
-                {linkedItems.length > 0 && (
-                  <div className="tb-items">
-                    {linkedItems.map(i => (
-                      <div key={i.id} className="tb-item">
-                        <span>{i.type === 'event' ? '📅' : '📝'}</span> {i.name || i.title}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="tb-link" onClick={e => e.stopPropagation()}>
-                  <select defaultValue="" onChange={e => { if (e.target.value) { onLinkItem(b.id, e.target.value); e.target.value = ''; } }}>
-                    <option value="">Link an item…</option>
-                    {available.map(i => <option key={i.id} value={String(i.id)}>{i.kind === 'event' ? '📅' : '📝'} {i.name || i.title}</option>)}
-                  </select>
                 </div>
               </div>
             );
@@ -1046,7 +1026,6 @@ export default function App() {
     setBlockModal(null); setEditingBlock(null);
   };
   const handleDeleteBlock = (id) => setBlocks(prev => prev.filter(b => b.id !== id));
-  const handleLinkItem = (blockId, itemId) => setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, linked: [...(b.linked || []), itemId] } : b));
 
   // ── Today's schedule ──────────────────────────────────────────────────────
   const todayEvents = cals.filter((ev) => ev.date === fmt(today)).sort((a, b) => a.time.localeCompare(b.time));
@@ -1155,7 +1134,6 @@ export default function App() {
                   onAddBlock={handleAddBlock}
                   onEditBlock={handleEditBlock}
                   onDeleteBlock={handleDeleteBlock}
-                  onLinkItem={handleLinkItem}
                 />
               )}
             </div>
