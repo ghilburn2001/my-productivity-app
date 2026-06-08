@@ -539,9 +539,19 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
   );
 }
 
-function DayView({ cursor, cals, blocks, onAddBlock, onAddEvent, onEditBlock, onDeleteBlock, onDeleteEvent, onEditEvent, todos }) {
+function DayView({ cursor, cals, onAddBlock, onAddEvent, onEditBlock, onDeleteBlock, onDeleteEvent, onEditEvent, todos }) {
   const ds = fmt(cursor);
-  const timedCals = cals.filter((ev) => ev.date === ds && ev.time);
+  const timedCals = cals.filter((ev) => ev.date === ds && ev.time && !ev.type?.startsWith('block'));
+  const dayBlocks = cals.filter((ev) => ev.date === ds && ev.type?.startsWith('block')).map(b => {
+    const endT = b.end_time || b.endTime;
+    let dur = 60;
+    if (endT && b.time) {
+      const [bh2, bm2] = b.time.split(':').map(Number);
+      const [eh2, em2] = endT.split(':').map(Number);
+      dur = Math.max(15, (eh2 * 60 + em2) - (bh2 * 60 + bm2));
+    }
+    return { ...b, label: b.title, dur, kind: b.type.replace('block-', '') || 'task' };
+  });
   const untimedTodos = todos.filter((t) => {
     const isDone = (t.tot || 1) > 1 ? t.done >= t.tot : t.done;
     return !isDone && !t.time;
@@ -556,7 +566,7 @@ function DayView({ cursor, cals, blocks, onAddBlock, onAddEvent, onEditBlock, on
     const totalMins = Math.round(y / SLOT) * 60;
     const h = Math.floor(totalMins / 60);
     const m = totalMins % 60;
-    onAddEvent(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    onAddBlock(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
   };
 
   return (
@@ -584,7 +594,7 @@ function DayView({ cursor, cals, blocks, onAddBlock, onAddEvent, onEditBlock, on
               </div>
             );
           })}
-          {blocks.map((b) => {
+          {dayBlocks.map((b) => {
             const [bh, bm] = b.time.split(':').map(Number);
             const top = minsToTop(bh * 60 + bm);
             const height = (b.dur / 60) * SLOT;
@@ -833,11 +843,10 @@ export default function App() {
   // ── Load from Supabase on mount ───────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      const [{ data: todosData }, { data: calsData }, { data: journalsData }, { data: blocksData }] = await Promise.all([
+      const [{ data: todosData }, { data: calsData }, { data: journalsData }] = await Promise.all([
         supabase.from('todos').select('*').order('created_at'),
         supabase.from('cals').select('*').order('created_at'),
         supabase.from('journals').select('*').order('date', { ascending: false }),
-        supabase.from('blocks').select('*').order('created_at'),
       ]);
       if (todosData) setTodos(todosData.map(t => ({ ...t, timerDur: t.timer_dur || 0, timerActive: false, timerStart: null, timerElapsed: 0, subs: t.subs || [] })));
       if (calsData) setCals(calsData.map(ev => ({ ...ev, endTime: ev.end_time || null })));
@@ -846,7 +855,6 @@ export default function App() {
         journalsData.forEach(e => { j[e.date] = e; });
         setJournals(j);
       }
-      if (blocksData) setBlocks(blocksData);
     };
     load();
   }, []);
@@ -854,12 +862,9 @@ export default function App() {
   const [view, setView] = useState("day");
   const [cursor, setCursor] = useState(new Date(today));
   const [modal, setModal] = useState(null); // "todo" | "event" | null
-  const [showAddMenu, setShowAddMenu] = useState(false);
-  const addBtnRef = useRef(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventDefaults, setEventDefaults] = useState(null);
   const [editingTodo, setEditingTodo] = useState(null);
-  const [blocks, setBlocks] = useState([]);
   const [blockModal, setBlockModal] = useState(null);
   const [editingBlock, setEditingBlock] = useState(null);
   const [activeTimer, setActiveTimer] = useState(null);
@@ -1011,21 +1016,38 @@ export default function App() {
 
   // ── Block handlers ────────────────────────────────────────────────────────
   const handleAddBlock = (time) => { setEditingBlock(null); setBlockModal(time || '09:00'); };
-  const handleEditBlock = (block) => { setEditingBlock(block); setBlockModal(block.time); };
+  const handleEditBlock = (calBlock) => {
+    const endT = calBlock.end_time || calBlock.endTime;
+    let dur = 60;
+    if (endT && calBlock.time) {
+      const [bh, bm] = calBlock.time.split(':').map(Number);
+      const [eh, em] = endT.split(':').map(Number);
+      dur = Math.max(15, (eh * 60 + em) - (bh * 60 + bm));
+    }
+    setEditingBlock({ ...calBlock, label: calBlock.title, dur, kind: calBlock.type.replace('block-', '') || 'task' });
+    setBlockModal(calBlock.time);
+  };
   const handleSaveBlock = async (data) => {
-    if (editingBlock) {
-      setBlocks(prev => prev.map(b => b.id === editingBlock.id ? { ...b, ...data } : b));
-      await supabase.from('blocks').update(data).eq('id', editingBlock.id);
+    const [bh, bm] = data.time.split(':').map(Number);
+    const endMins = bh * 60 + bm + data.dur;
+    const eh = Math.floor(endMins / 60) % 24;
+    const em = endMins % 60;
+    const end_time = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+    const blockType = `block-${data.kind || 'task'}`;
+    if (editingBlock?.id) {
+      const updated = { title: data.label, time: data.time, end_time, type: blockType };
+      setCals(prev => prev.map(c => c.id === editingBlock.id ? { ...c, ...updated, endTime: end_time } : c));
+      await supabase.from('cals').update(updated).eq('id', editingBlock.id);
     } else {
-      const newBlock = { id: uid(), ...data, created_at: new Date().toISOString() };
-      setBlocks(prev => [...prev, newBlock]);
-      await supabase.from('blocks').insert(newBlock);
+      const newBlock = { id: uid(), title: data.label, type: blockType, date: fmt(cursor), time: data.time, end_time, reminder: 0, created_at: new Date().toISOString() };
+      setCals(prev => [...prev, { ...newBlock, endTime: end_time }]);
+      await supabase.from('cals').insert(newBlock);
     }
     setBlockModal(null); setEditingBlock(null);
   };
   const handleDeleteBlock = async (id) => {
-    setBlocks(prev => prev.filter(b => b.id !== id));
-    await supabase.from('blocks').delete().eq('id', id);
+    setCals(prev => prev.filter(c => c.id !== id));
+    await supabase.from('cals').delete().eq('id', id);
   };
 
   // ── Today's schedule ──────────────────────────────────────────────────────
@@ -1109,7 +1131,6 @@ export default function App() {
               )}
               {view === "day" && (
                 <DayView cursor={cursor} cals={cals} todos={todos}
-                  blocks={blocks}
                   onAddBlock={handleAddBlock}
                   onAddEvent={handleAddEvent}
                   onEditBlock={handleEditBlock}
