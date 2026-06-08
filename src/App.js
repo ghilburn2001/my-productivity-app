@@ -475,11 +475,19 @@ function WeekView({ cursor, today, cals, timedItems, onSelectDate }) {
 }
 
 // ── Day calendar ──────────────────────────────────────────────────────────────
+const PRESET_DURS = [30, 60, 90, 120, 180];
+
 function BlockModal({ block, defaultTime, onClose, onSave }) {
   const [label, setLabel] = useState(block?.label || '');
   const [startTime, setStartTime] = useState(block?.time || defaultTime || '09:00');
-  const [dur, setDur] = useState(block?.dur || 60);
+  const isPreset = PRESET_DURS.includes(block?.dur);
+  const [dur, setDur] = useState(isPreset || !block ? (block?.dur || 60) : 'other');
+  const [customH, setCustomH] = useState(!isPreset && block ? Math.floor((block.dur || 0) / 60) : 0);
+  const [customM, setCustomM] = useState(!isPreset && block ? (block.dur || 0) % 60 : 0);
   const [kind, setKind] = useState(block?.kind || 'task');
+
+  const effectiveDur = dur === 'other' ? (customH * 60 + customM) || 60 : dur;
+
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal routine" onClick={e => e.stopPropagation()}>
@@ -487,7 +495,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
         <div className="modal-sub">A block of time in your day</div>
         <div className="field"><label>BLOCK NAME</label>
           <input autoFocus value={label} onChange={e => setLabel(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onSave({ label, time: startTime, dur, kind })}
+            onKeyDown={e => e.key === 'Enter' && onSave({ label, time: startTime, dur: effectiveDur, kind })}
             placeholder="e.g. Morning routine, Deep work…" />
         </div>
         <div className="field-row">
@@ -502,18 +510,29 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
             <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
           </div>
           <div className="field"><label>DURATION</label>
-            <select value={dur} onChange={e => setDur(Number(e.target.value))}>
+            <select value={dur} onChange={e => setDur(e.target.value === 'other' ? 'other' : Number(e.target.value))}>
               <option value={30}>30 min</option>
               <option value={60}>1 hour</option>
               <option value={90}>1.5 hours</option>
               <option value={120}>2 hours</option>
               <option value={180}>3 hours</option>
+              <option value="other">Other…</option>
             </select>
           </div>
         </div>
+        {dur === 'other' && (
+          <div className="field-row">
+            <div className="field"><label>HOURS</label>
+              <input type="number" min={0} max={23} value={customH} onChange={e => setCustomH(Math.max(0, parseInt(e.target.value) || 0))} />
+            </div>
+            <div className="field"><label>MINUTES</label>
+              <input type="number" min={0} max={59} value={customM} onChange={e => setCustomM(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))} />
+            </div>
+          </div>
+        )}
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onClose}>Cancel</button>
-          <button className="btn-save" onClick={() => onSave({ label, time: startTime, dur, kind })}>Save block →</button>
+          <button className="btn-save" onClick={() => onSave({ label, time: startTime, dur: effectiveDur, kind })}>Save block →</button>
         </div>
       </div>
     </div>
