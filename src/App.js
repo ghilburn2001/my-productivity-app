@@ -1012,7 +1012,9 @@ export default function App() {
   const handleDeleteBlock = (id) => setBlocks(prev => prev.filter(b => b.id !== id));
 
   // ── Today's schedule ──────────────────────────────────────────────────────
-  const todayEvents = cals.filter((ev) => ev.date === fmt(today)).sort((a, b) => a.time.localeCompare(b.time));
+  const scheduleDate = view === 'day' ? cursor : today;
+  const scheduleDateStr = fmt(scheduleDate);
+  const todayEvents = cals.filter((ev) => ev.date === scheduleDateStr).sort((a, b) => a.time.localeCompare(b.time));
 
   return (
     <div className="app">
@@ -1126,8 +1128,8 @@ export default function App() {
             <div className="sidebar">
               <div className="sc">
                 <div className="st">
-                  ☀️ Today's schedule
-                  <span className="ssub">{MONTHS_SHORT[today.getMonth()]} {today.getDate()}</span>
+                  ☀️ {view === 'day' ? DAY_NAMES[scheduleDate.getDay()] + "'s schedule" : "Today's schedule"}
+                  <span className="ssub">{MONTHS_SHORT[scheduleDate.getMonth()]} {scheduleDate.getDate()}</span>
                 </div>
                 <div className="il" style={{ maxHeight: 200 }}>
                   {todayEvents.length === 0 ? (
