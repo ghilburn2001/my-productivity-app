@@ -848,7 +848,7 @@ export default function App() {
     load();
   }, []);
 
-  const [view, setView] = useState("month");
+  const [view, setView] = useState("day");
   const [cursor, setCursor] = useState(new Date(today));
   const [modal, setModal] = useState(null); // "todo" | "event" | null
   const [showAddMenu, setShowAddMenu] = useState(false);
