@@ -475,9 +475,9 @@ function WeekView({ cursor, today, cals, timedItems, onSelectDate }) {
 }
 
 // ── Day calendar ──────────────────────────────────────────────────────────────
-function BlockModal({ block, onClose, onSave }) {
+function BlockModal({ block, defaultTime, onClose, onSave }) {
   const [label, setLabel] = useState(block?.label || '');
-  const [startTime, setStartTime] = useState(block?.time || '09:00');
+  const [startTime, setStartTime] = useState(block?.time || defaultTime || '09:00');
   const [dur, setDur] = useState(block?.dur || 60);
   return (
     <div className="overlay" onClick={onClose}>
@@ -1030,6 +1030,7 @@ export default function App() {
       {blockModal && (
         <BlockModal
           block={editingBlock}
+          defaultTime={blockModal}
           onClose={() => { setBlockModal(null); setEditingBlock(null); }}
           onSave={handleSaveBlock}
         />
