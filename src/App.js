@@ -833,10 +833,11 @@ export default function App() {
   // ── Load from Supabase on mount ───────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      const [{ data: todosData }, { data: calsData }, { data: journalsData }] = await Promise.all([
+      const [{ data: todosData }, { data: calsData }, { data: journalsData }, { data: blocksData }] = await Promise.all([
         supabase.from('todos').select('*').order('created_at'),
         supabase.from('cals').select('*').order('created_at'),
         supabase.from('journals').select('*').order('date', { ascending: false }),
+        supabase.from('blocks').select('*').order('created_at'),
       ]);
       if (todosData) setTodos(todosData.map(t => ({ ...t, timerDur: t.timer_dur || 0, timerActive: false, timerStart: null, timerElapsed: 0, subs: t.subs || [] })));
       if (calsData) setCals(calsData.map(ev => ({ ...ev, endTime: ev.end_time || null })));
@@ -845,6 +846,7 @@ export default function App() {
         journalsData.forEach(e => { j[e.date] = e; });
         setJournals(j);
       }
+      if (blocksData) setBlocks(blocksData);
     };
     load();
   }, []);
@@ -1002,15 +1004,21 @@ export default function App() {
   // ── Block handlers ────────────────────────────────────────────────────────
   const handleAddBlock = (time) => { setEditingBlock(null); setBlockModal(time || '09:00'); };
   const handleEditBlock = (block) => { setEditingBlock(block); setBlockModal(block.time); };
-  const handleSaveBlock = (data) => {
+  const handleSaveBlock = async (data) => {
     if (editingBlock) {
       setBlocks(prev => prev.map(b => b.id === editingBlock.id ? { ...b, ...data } : b));
+      await supabase.from('blocks').update(data).eq('id', editingBlock.id);
     } else {
-      setBlocks(prev => [...prev, { id: uid(), ...data, linked: [] }]);
+      const newBlock = { id: uid(), ...data, created_at: new Date().toISOString() };
+      setBlocks(prev => [...prev, newBlock]);
+      await supabase.from('blocks').insert(newBlock);
     }
     setBlockModal(null); setEditingBlock(null);
   };
-  const handleDeleteBlock = (id) => setBlocks(prev => prev.filter(b => b.id !== id));
+  const handleDeleteBlock = async (id) => {
+    setBlocks(prev => prev.filter(b => b.id !== id));
+    await supabase.from('blocks').delete().eq('id', id);
+  };
 
   // ── Today's schedule ──────────────────────────────────────────────────────
   const scheduleDate = view === 'day' ? cursor : today;
