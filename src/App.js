@@ -479,6 +479,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
   const [label, setLabel] = useState(block?.label || '');
   const [startTime, setStartTime] = useState(block?.time || defaultTime || '09:00');
   const [dur, setDur] = useState(block?.dur || 60);
+  const [kind, setKind] = useState(block?.kind || 'task');
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal routine" onClick={e => e.stopPropagation()}>
@@ -486,10 +487,16 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
         <div className="modal-sub">A block of time in your day</div>
         <div className="field"><label>BLOCK NAME</label>
           <input autoFocus value={label} onChange={e => setLabel(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onSave({ label, time: startTime, dur })}
+            onKeyDown={e => e.key === 'Enter' && onSave({ label, time: startTime, dur, kind })}
             placeholder="e.g. Morning routine, Deep work…" />
         </div>
         <div className="field-row">
+          <div className="field"><label>TYPE</label>
+            <select value={kind} onChange={e => setKind(e.target.value)}>
+              <option value="task">Task</option>
+              <option value="event">Event</option>
+            </select>
+          </div>
           <div className="field"><label>START TIME</label>
             <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
           </div>
@@ -505,7 +512,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
         </div>
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onClose}>Cancel</button>
-          <button className="btn-save" onClick={() => onSave({ label, time: startTime, dur })}>Save block →</button>
+          <button className="btn-save" onClick={() => onSave({ label, time: startTime, dur, kind })}>Save block →</button>
         </div>
       </div>
     </div>
