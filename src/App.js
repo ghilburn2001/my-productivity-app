@@ -491,7 +491,7 @@ function BlockModal({ block, defaultTime, onClose, onSave }) {
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal routine" onClick={e => e.stopPropagation()}>
-        <div className="modal-title">{block ? 'Edit block' : 'New time block'}</div>
+        <div className="modal-title">{block ? 'Edit' : 'New'}</div>
         <div className="modal-sub">A block of time in your day</div>
         <div className="field"><label>BLOCK NAME</label>
           <input autoFocus value={label} onChange={e => setLabel(e.target.value)}
